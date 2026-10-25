@@ -1,0 +1,6 @@
+# 本地凭证（绝不提交）
+.env
+*.local
+mcp-config.json
+__pycache__/
+.DS_Store

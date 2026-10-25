@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>麦麦联想 · 猜你想吃什么</title>
+<style>
+:root{
+  --red:#DA291C; --yellow:#FFC72C; --dark:#1A1A1A; --bg:#FFFFFF;
+  --green:#009A44; --orange:#FF8732; --gray:#F5F5F5; --line:#E8E8E8;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:"HarmonyOS Sans SC","Source Han Sans SC","PingFang SC",system-ui,sans-serif;background:var(--gray);color:var(--dark);max-width:480px;margin:0 auto;min-height:100vh}
+.num{font-variant-numeric:tabular-nums}
+header{background:var(--red);color:#fff;padding:18px 20px 14px;position:sticky;top:0;z-index:10}
+header h1{font-size:20px;font-weight:800}
+header .sub{font-size:12px;opacity:.9;margin-top:4px}
+.screen{padding:16px;display:none}
+.screen.on{display:block}
+.card{background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+textarea{width:100%;min-height:88px;border:2px solid var(--line);border-radius:12px;padding:12px;font-size:15px;resize:none;font-family:inherit}
+textarea:focus{outline:none;border-color:var(--yellow)}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.chip{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:7px 14px;font-size:13px;cursor:pointer;user-select:none}
+.chip.sel{background:var(--yellow);border-color:var(--yellow);font-weight:700}
+.lbl{font-size:12px;color:#888;margin:14px 0 6px}
+.kcal-input{border:1.5px solid var(--line);border-radius:999px;padding:7px 12px;width:120px;font-size:13px}
+.btn{display:block;width:100%;background:var(--yellow);color:var(--dark);border:none;border-radius:12px;padding:14px;font-size:16px;font-weight:800;margin-top:16px;cursor:pointer}
+.btn.red{background:var(--red);color:#fff}
+.btn.ghost{background:#fff;border:1.5px solid var(--red);color:var(--red)}
+.voice{position:absolute;right:22px;top:118px;background:var(--red);color:#fff;border:none;width:38px;height:38px;border-radius:50%;font-size:16px;cursor:pointer}
+.conf-line{font-size:13px;color:#666;margin-bottom:12px;line-height:1.6}
+.conf-line b{color:var(--red)}
+.conf-bar{height:6px;background:var(--line);border-radius:3px;margin:8px 0 14px;overflow:hidden}
+.conf-bar i{display:block;height:100%;background:var(--red);border-radius:3px}
+.food-grid{display:flex;flex-direction:column;gap:10px}
+.food{background:#fff;border-radius:14px;padding:14px;display:flex;align-items:center;gap:12px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.food:active{transform:scale(.98)}
+.kcal-badge{min-width:64px;text-align:center;border-radius:10px;padding:6px 8px;font-weight:800;font-size:15px;color:#fff}
+.kcal-badge small{display:block;font-size:10px;font-weight:400;opacity:.85}
+.food .info{flex:1}
+.food .info .n{font-size:15px;font-weight:700}
+.food .info .p{font-size:14px;color:var(--red);font-weight:800;margin-top:3px}
+.food .info .t{font-size:11px;color:#999;margin-top:3px}
+.food .arrow{color:#ccc;font-size:18px}
+.round{margin-bottom:14px}
+.round .rn{font-size:13px;font-weight:700;margin-bottom:8px}
+.opt{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;margin-bottom:6px;font-size:13px;cursor:pointer}
+.opt.sel{border-color:var(--yellow);background:#FFF9E6}
+.opt .d{font-size:12px}
+.d.good{color:var(--green)}.d.bad{color:var(--red)}.d.flat{color:#999}
+.total-line{display:flex;justify-content:space-between;font-size:15px;font-weight:800;padding:12px 4px;border-top:2px dashed var(--line)}
+.note{font-size:12px;color:#999;line-height:1.6}
+.warn{background:#FFF3CD;border-radius:10px;padding:10px 12px;font-size:12px;color:#856404;margin:10px 0}
+.receipt{background:#fff;border-radius:12px;padding:18px;font-size:13px;line-height:1.9;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.receipt h3{text-align:center;font-size:15px;margin-bottom:8px}
+.receipt .sep{border-top:1.5px dashed #ddd;margin:10px 0}
+footer{padding:20px;text-align:center;font-size:11px;color:#aaa;line-height:1.8}
+.est{color:#888;font-size:10px}
+</style>
+</head>
+<body>
+<header>
+  <h1>麦麦联想 · 猜你想吃什么</h1>
+  <div class="sub" id="storeLine">正在加载门店与菜单…</div>
+</header>
+
+<!-- 屏 1 · 说 -->
+<div class="screen on" id="s1">
+  <div class="card" style="position:relative">
+    <textarea id="txt" placeholder="随便说些什么，让我猜猜你想吃什么（比如：练完腿了 / 今天好累 / 想吃点清淡的）"></textarea>
+    <button class="voice" id="voiceBtn" title="语音输入">🎙</button>
+    <div class="lbl">口味倾向</div>
+    <div class="row" id="tasteRow">
+      <span class="chip" data-k="taste" data-v="清淡">清淡</span>
+      <span class="chip" data-k="taste" data-v="放开吃">放开吃</span>
+      <span class="chip" data-k="taste" data-v="随便">随便</span>
+    </div>
+    <div class="lbl">目标</div>
+    <div class="row">
+      <span class="chip" data-k="goal" data-v="减脂">减脂</span>
+      <span class="chip" data-k="goal" data-v="增肌">增肌</span>
+      <span class="chip" data-k="goal" data-v="尝新">尝新</span>
+      <span class="chip" data-k="goal" data-v="省钱">省钱</span>
+    </div>
+    <div class="lbl">预算</div>
+    <div class="row">
+      <span class="chip" data-k="budget" data-v="20">¥20</span>
+      <span class="chip" data-k="budget" data-v="30">¥30</span>
+      <span class="chip" data-k="budget" data-v="40">¥40</span>
+      <span class="chip" data-k="budget" data-v="">不限</span>
+    </div>
+    <div class="lbl">这顿卡路里预算（选填）</div>
+    <div class="row"><input class="kcal-input num" id="kcalCap" type="number" min="100" max="3000" placeholder="例如 600"> <span style="font-size:13px;color:#888;align-self:center">kcal 以内</span></div>
+    <div class="row" style="margin-top:16px">
+      <button class="btn ghost" type="button" style="flex:0 0 auto;padding:14px 16px;margin:0" onclick="clearAll()">✕ 清除</button>
+      <button class="btn" style="flex:1;margin:0" onclick="goRecommend()">猜一猜 🎯</button>
+    </div>
+  </div>
+  <p class="note">数据来自麦当劳 MCP 真实接口快照（<span id="snapTime"></span>）；我们只做到「选好」，不替你付款。</p>
+</div>
+
+<!-- 屏 2 · 选 -->
+<div class="screen" id="s2">
+  <div class="conf-line" id="confText"></div>
+  <div class="conf-bar"><i id="confBar" style="width:0%"></i></div>
+  <div class="food-grid" id="foodList"></div>
+  <div class="row" style="margin-top:14px">
+    <button class="btn ghost" style="flex:1" onclick="reroll()">换一批 🔄</button>
+    <button class="btn" style="flex:1" onclick="show('s1')">重新说 ✏️</button>
+  </div>
+</div>
+
+<!-- 屏 3 · 自定义 -->
+<div class="screen" id="s3">
+  <div class="card">
+    <h3 id="czName" style="font-size:16px;margin-bottom:4px"></h3>
+    <p class="note" id="czBase"></p>
+  </div>
+  <div class="card" id="czRounds"></div>
+  <div class="card" id="czSauce"></div>
+  <div class="card" id="czBundle"></div>
+  <div class="card">
+    <div class="total-line"><span>整单热量</span><span class="num" id="czKcal"></span></div>
+    <div class="total-line" style="border:none"><span>预计应付</span><span class="num" id="czPrice"></span></div>
+    <p class="note" id="czEstNote"></p>
+  </div>
+  <button class="btn" onclick="goFinal()">生成点餐清单 →</button>
+  <button class="btn ghost" onclick="show('s2')">← 返回重选</button>
+</div>
+
+<!-- 屏 4 · 去付款（我们停在这） -->
+<div class="screen" id="s4">
+  <div class="receipt" id="receipt"></div>
+  <button class="btn" onclick="copyList()">复制点餐清单 📋</button>
+  <button class="btn ghost" onclick="show('s3')">← 再改改</button>
+  <p class="note" style="margin-top:12px;text-align:center">复制后去麦当劳官方 App / 小程序下单付款。<br>网页版是离线演示、不建单；要「生成订单 + H5 支付链接」请用 Skill 版（对话里说「下单」）。<br><b>我们绝不出手付款——付款永远在你自己手上。</b></p>
+</div>
+
+<footer>
+  本项目为麦当劳程序员创意开发大赛参赛作品 · 非麦当劳官方产品<br>
+  数据为 MCP 接口快照，价格与供应以麦当劳官方渠道实时结果为准 · 不构成营养或医疗建议
+</footer>
+
+<script id="snap-data" type="application/json">{
+ "meta": {
+  "generatedAt": "2026-10-24 15:08",
+  "source": "麦当劳 MCP 真实调用（query-nearby-stores / query-meals / query-meal-detail / list-nutrition-foods / now-time-info）",
+  "store": "1450452",
+  "storeName": "示例门店（上海）",
+  "serverTime": "2026-10-24 15:06:07",
+  "dayOfWeek": "周六",
+  "note": "快照用于离线演示，采集自上海某门店；配置你自己的 MCP 后重新运行 scripts/build_snapshot.py，即生成你附近门店的快照。价格与供应以麦当劳官方渠道实时结果为准"
+ },
+ "cats": [
+  {"n": "人气热卖", "c": ["9900014838","9900016075","9900016073","9900016076","9900016077","521952","9900016566","9900011056","9900015151","9900004064","521950","515946"]},
+  {"n": "小食拼盘/多人餐", "c": ["9900016076","9900015726","9900015151","9900006332","9900015730","9900004066","9900011056","9900005321"]},
+  {"n": "精选单人餐", "c": ["9900014837","9900014974","9900004064","9900004236","9900010110","9900006957"]},
+  {"n": "鸡肉汉堡/卷", "c": ["9900016075","9900016073","521953","521952","9900016310","9900016309","9900000891","9900000890","9900005462","9900005456","9900005453","9900003537","1440","1406","1450","9900008746"]},
+  {"n": "蘸酱炸鸡", "c": ["9900016078","9900016096","9900015729"]},
+  {"n": "随心配1+1", "c": ["9900013304","9900015568"]},
+  {"n": "巨无霸/牛鱼肉堡", "c": ["9900015851","521903","9900016301","9900000888","9900000886","9900000885","9900000893","9900005411","9900005466","9900005468","9900005413","9900005460","9900005464","9900005449","521730","521731","1100","9900003586","1600","4648","1106","1120","521316","9900008747"]},
+  {"n": "安格斯MAX厚牛堡", "c": ["9900000881","9900000882","9900005428","9900005430","511781","511782"]},
+  {"n": "炸鸡", "c": ["521881","9900005451","9900004835","1700","520445","1401","521156","9900005432"]},
+  {"n": "大堡口福单人餐", "c": ["9900015602"]},
+  {"n": "开心乐园", "c": ["9900016057","9900016058","9900016056","9900016055"]},
+  {"n": "小食甜品/其他", "c": ["521986","9900016082","521951","521901","521917","521836","521741","4810","4437","6102","9900008754","9900008745","515837","9900008752"]},
+  {"n": "麦咖啡", "c": ["9900015561","515955","515946","521791","507411","507409","510479","507387","514851","520689","507389","510488","507394"]},
+  {"n": "500大卡套餐", "c": ["9900011128","9900011121","9900011126","9900011123","9900009245","9900009242"]},
+  {"n": "饮品", "c": ["521817","9900008751","3010","515520","2430","515280","6352","3755","6362","3757","9900003538","3505"]}
+ ],
+ "items": {
+  "9900014838": ["枫糖风味厚松饼猪柳蛋堡三件套", 27.9, 40.0, "", 0],
+  "9900016075": ["龙焰芝士棒鸡腿堡三件套", 29.9, 52.0, "", 0],
+  "9900016073": ["龙焰鸡腿堡三件套", 26.9, 49.0, "", 0],
+  "9900016076": ["鸡薯双全盒", 15.9, 30.0, "", 0],
+  "9900016077": ["蘸酱炸鸡", 11.9, 17.5, "", 0],
+  "521952": ["龙焰鸡腿堡", 15.9, 24.5, "促销优惠", 0],
+  "9900016566": ["心形薯饼8块", 9.9, 24.0, "促销优惠", 0],
+  "9900011056": ["全明星双人分享餐八件套", 49.9, 117.5, "随单购麦金卡优惠", 1],
+  "9900015151": ["麦麦周末双人餐", 49.9, 87.5, "", 0],
+  "9900004064": ["精选单人餐三件套", 35.0, 47.5, "", 0],
+  "521950": ["蓝莓爆爆珠麦旋风", 16.0, 16.0, "", 0],
+  "515946": ["浓浓黑巧（冰/热）", 13.9, 21.0, "促销优惠", 0],
+  "9900015726": ["韩式甜辣酱鸡块8块", 19.9, 31.0, "", 0],
+  "9900006332": ["薄皮V翅双拼十翅", 49.9, 74.5, "", 0],
+  "9900015730": ["BFF四宫格小食盘", 40.3, 54.5, "", 0],
+  "9900004066": ["堡堡随心拼（7件任选）", 73.0, 104.0, "", 0],
+  "9900005321": ["BFF四宫格小食盘双人餐", 62.9, 124.5, "随单购麦金卡优惠", 1],
+  "9900014837": ["枫糖风味厚松饼猪柳蛋堡三件套", 27.9, 40.0, "", 0],
+  "9900014974": ["枫糖风味厚松饼猪柳堡三件套", 23.9, 36.0, "", 0],
+  "9900004236": ["人气超值四件套随心选", 28.0, 58.0, "随单购麦金卡优惠", 1],
+  "9900010110": ["鱼牛汉堡四件套随心选", 32.0, 59.0, "随单购麦金卡优惠", 1],
+  "9900006957": ["安格斯厚牛堡四件套随心选", 37.0, 66.5, "随单购麦金卡优惠", 1],
+  "521953": ["龙焰芝士棒鸡腿堡", 27.5, 27.5, "", 0],
+  "9900016310": ["龙焰芝士棒鸡腿堡四件套", 32.0, 58.0, "随单购麦金卡优惠", 1],
+  "9900016309": ["龙焰鸡腿堡四件套", 29.0, 58.0, "随单购麦金卡优惠", 1],
+  "9900000891": ["麦辣鸡腿堡四件套", 28.0, 58.0, "随单购麦金卡优惠", 1],
+  "9900000890": ["板烧鸡腿堡四件套", 28.0, 58.0, "随单购麦金卡优惠", 1],
+  "9900005462": ["板烧鸡腿堡三件套", 35.0, 48.5, "", 0],
+  "9900005456": ["麦辣鸡腿汉堡三件套", 34.0, 47.5, "", 0],
+  "9900005453": ["麦香鸡套餐", 28.0, 41.5, "", 0],
+  "9900003537": ["学生专享汉堡小食随心选", 28.0, 28.0, "", 0],
+  "1440": ["麦辣鸡腿汉堡", 23.0, 23.0, "", 0],
+  "1406": ["板烧鸡腿堡", 24.0, 24.0, "", 0],
+  "1450": ["麦香鸡", 17.0, 17.0, "", 0],
+  "9900008746": ["鸡肉堡单品精选", 24.0, 24.0, "", 0],
+  "9900016078": ["蘸酱麦麦脆汁鸡", 11.9, 18.0, "", 0],
+  "9900016096": ["蘸酱韩式甜辣酱鸡块", 11.9, 18.5, "", 0],
+  "9900015729": ["蘸酱BFF四宫格小食盘", 43.3, 57.5, "", 0],
+  "9900013304": ["人气经典随心配", 14.9, 14.9, "", 0],
+  "9900015568": ["精选超值随心配", 13.9, 13.9, "", 0],
+  "9900015851": ["三文鱼双虾至尊月堡三件套", 36.9, 55.0, "", 0],
+  "521903": ["三文鱼双虾至尊月堡", 30.5, 30.5, "", 0],
+  "9900016301": ["枫糖风味厚松饼猪柳蛋堡四件套", 28.0, 52.0, "随单购麦金卡优惠", 1],
+  "9900000888": ["巨无霸四件套", 32.0, 59.0, "随单购麦金卡优惠", 1],
+  "9900000886": ["不素之霸双层牛堡四件套", 32.0, 59.0, "随单购麦金卡优惠", 1],
+  "9900000885": ["培根蔬萃双层牛堡四件套", 32.0, 59.0, "随单购麦金卡优惠", 1],
+  "9900000893": ["双层深海鳕鱼堡四件套", 32.0, 59.0, "随单购麦金卡优惠", 1],
+  "9900005411": ["不素之霸双层牛堡三件套", 37.5, 51.0, "", 0],
+  "9900005466": ["巨无霸三件套", 37.0, 50.5, "", 0],
+  "9900005468": ["培根蔬萃双层牛堡三件套", 35.5, 49.0, "", 0],
+  "9900005413": ["双层深海鳕鱼堡三件套", 35.0, 48.5, "", 0],
+  "9900005460": ["麦香鱼套餐", 33.5, 47.0, "", 0],
+  "9900005464": ["双层吉士汉堡套餐", 34.0, 47.5, "", 0],
+  "9900005449": ["吉士汉堡包套餐", 26.0, 39.5, "", 0],
+  "521730": ["枫糖风味厚松饼猪柳蛋堡", 22.0, 22.0, "", 0],
+  "521731": ["枫糖风味厚松饼猪柳堡", 18.0, 18.0, "", 0],
+  "1100": ["巨无霸", 26.0, 26.0, "", 0],
+  "9900003586": ["双层深海鳕鱼堡", 24.0, 24.0, "", 0],
+  "1600": ["麦香鱼", 22.5, 22.5, "", 0],
+  "4648": ["不素之霸双层牛堡", 26.5, 26.5, "", 0],
+  "1106": ["培根蔬萃双层牛堡", 24.5, 24.5, "", 0],
+  "1120": ["双层吉士汉堡", 23.0, 23.0, "", 0],
+  "521316": ["高达吉士双牛堡", 22.5, 22.5, "", 0],
+  "9900008747": ["牛肉堡单品精选", 14.0, 14.0, "", 0],
+  "9900000881": ["培根安格斯厚牛堡四件套", 37.0, 66.5, "随单购麦金卡优惠", 1],
+  "9900000882": ["芝士安格斯厚牛堡四件套", 37.0, 66.5, "随单购麦金卡优惠", 1],
+  "9900005428": ["培根安格斯厚牛堡三件套", 45.5, 59.0, "", 0],
+  "9900005430": ["芝士安格斯厚牛堡三件套", 42.5, 56.0, "", 0],
+  "511781": ["培根安格斯厚牛堡", 34.5, 34.5, "", 0],
+  "511782": ["芝士安格斯厚牛堡", 31.5, 31.5, "", 0],
+  "521881": ["马来咖喱风味薄皮肉骨鸡3块", 15.5, 15.5, "", 0],
+  "9900005451": ["麦辣鸡翅4块套餐", 36.5, 50.0, "", 0],
+  "9900004835": ["麦乐鸡套餐", 25.5, 39.0, "", 0],
+  "1700": ["麦辣鸡翅", 14.5, 14.5, "", 0],
+  "520445": ["薄皮焦香V翅", 15.5, 15.5, "", 0],
+  "1401": ["麦乐鸡", 14.5, 14.5, "", 0],
+  "521156": ["那么大鸡排（椒盐风味）", 14.0, 14.0, "", 0],
+  "9900005432": ["麦麦脆汁鸡1块", 15.0, 15.0, "", 0],
+  "9900015602": ["大堡口福三件套", 22.9, 48.5, "", 0],
+  "9900016057": ["汉堡开心乐园餐", 23.5, 23.5, "", 0],
+  "9900016058": ["鱼排堡开心乐园餐", 24.0, 24.0, "", 0],
+  "9900016056": ["麦乐鸡开心乐园餐", 25.0, 25.0, "", 0],
+  "9900016055": ["开心亲子双人餐", 59.5, 59.5, "", 0],
+  "521986": ["马苏里拉拉丝芝士条", 11.0, 16.0, "促销优惠", 0],
+  "9900016082": ["心形薯饼5块", 15.5, 15.5, "", 0],
+  "521951": ["灰焰圆筒", 5.0, 5.0, "", 0],
+  "521901": ["月下相思扭扭薯", 16.0, 16.0, "", 0],
+  "521917": ["泷愿成真麦旋风（大米风味）", 16.0, 16.0, "", 0],
+  "521836": ["柠檬脆脆麦旋风", 16.0, 16.0, "", 0],
+  "521741": ["脆薯饼", 8.0, 8.0, "", 0],
+  "4810": ["薯条", 14.5, 14.5, "", 0],
+  "4437": ["玉米杯", 13.0, 13.0, "", 0],
+  "6102": ["苹果片", 7.0, 7.0, "", 0],
+  "9900008754": ["经典麦旋风", 15.0, 15.0, "", 0],
+  "9900008745": ["新地", 13.0, 13.0, "", 0],
+  "515837": ["圆筒冰淇淋", 5.0, 5.0, "", 0],
+  "9900008752": ["派", 8.5, 8.5, "", 0],
+  "9900015561": ["麦咖啡冰爽一夏", 9.9, 23.0, "", 0],
+  "515955": ["浓浓燕麦黑巧（冰/热）", 15.9, 23.0, "促销优惠", 0],
+  "521791": ["茉莉奶绿雪冰", 9.9, 23.0, "促销优惠", 0],
+  "507411": ["麦咖啡美式", 11.9, 19.0, "促销优惠", 0],
+  "507409": ["麦咖啡奶铁", 13.9, 21.0, "促销优惠", 0],
+  "510479": ["燕麦奶铁", 9.9, 23.0, "随单购麦金卡优惠", 1],
+  "507387": ["卡布奇诺", 21.0, 21.0, "", 0],
+  "514851": ["咖啡阿芙佳朵", 15.0, 15.0, "", 0],
+  "520689": ["鲜萃咖啡", 10.0, 10.0, "", 0],
+  "507389": ["浓缩咖啡", 15.0, 15.0, "", 0],
+  "510488": ["燕麦奶", 21.0, 21.0, "", 0],
+  "507394": ["牛奶", 19.0, 19.0, "", 0],
+  "9900011128": ["堡你欢乐套餐（500大卡）", 28.0, 43.0, "", 0],
+  "9900011121": ["苹水相鱼套餐（500大卡）", 36.0, 54.0, "", 0],
+  "9900011126": ["酥脆无双套餐（500大卡）", 20.0, 20.0, "", 0],
+  "9900011123": ["辣么快乐套餐（500大卡）", 24.0, 36.5, "", 0],
+  "9900009245": ["牛气满满套餐（500大卡）", 34.0, 47.5, "", 0],
+  "9900009242": ["苹板支撑Pro套餐（500大卡）", 39.5, 54.0, "", 0],
+  "521817": ["美汁源多汁柠柠", 12.0, 12.0, "", 0],
+  "9900008751": ["可乐", 9.5, 9.5, "", 0],
+  "3010": ["雪碧", 9.5, 9.5, "", 0],
+  "515520": ["怡泉+C", 11.5, 11.5, "", 0],
+  "2430": ["美汁源黄金橙橙", 13.0, 13.0, "", 0],
+  "515280": ["阳光柠檬红茶", 9.5, 9.5, "", 0],
+  "6352": ["阳光橙麦炫酷", 13.5, 13.5, "", 0],
+  "3755": ["纯牛奶（盒装）", 10.5, 10.5, "", 0],
+  "6362": ["100%苹果汁（盒装）", 11.5, 11.5, "", 0],
+  "3757": ["纯悦", 7.5, 7.5, "", 0],
+  "9900003538": ["学生专享饮品随心选", 10.0, 10.0, "", 0],
+  "3505": ["锡兰红茶", 11.5, 11.5, "", 0]
+ },
+ "tags": {
+  "9900016073": ["韩式辣椒黄油风味"],
+  "9900016075": ["浓郁奶香拉丝芝士"],
+  "521952": ["上新"],
+  "521953": ["上新"],
+  "521903": ["上新", "精选三文鱼"],
+  "521881": ["上新", "浓郁咖喱飘香"],
+  "521986": ["上新"],
+  "521951": ["上新"],
+  "521950": ["上新", "蓝莓"],
+  "521901": ["上新"],
+  "521836": ["上新"],
+  "521917": ["上新"],
+  "521817": ["上新"],
+  "9900016082": ["上新"],
+  "9900016566": ["限时特惠"],
+  "1100": ["全球爆款", "全天供应"],
+  "9900013304": ["我的常点"],
+  "9900005462": ["烤制"],
+  "1406": ["烤制", "板烧滋滋"],
+  "9900009245": ["500大卡", "牛气满满"],
+  "9900009242": ["500大卡", "苹板支撑Pro"],
+  "9900011128": ["500大卡"],
+  "9900011121": ["500大卡"],
+  "9900011126": ["500大卡"],
+  "9900011123": ["500大卡"],
+  "9900011056": ["多人餐"],
+  "9900015151": ["多人餐"]
+ },
+ "nutri": "猪柳麦满分,308,16,16,24,781;猪柳蛋麦满分,387,23,21,25,846;烟肉蛋麦满分,260,16,10,24,483;火腿扒麦满分,261,14,12,24,608;中薯条,289,4,12,38,165;大薯条,379,6,16,50,216;小薯条,210,3,9,28,120;迷你薯条,106,2,4,14,61;圆筒冰淇淋,93,2,3,14,36;麦乐鸡5块,213,12,12,13,422;大杯玉米杯,87,4,1,12,2;小杯玉米杯,53,2,1,7,1;麦辣鸡翅-2块,224,13,15,9,537;朱古力新地,282,5,9,44,126;草莓新地,245,4,6,43,84;奥利奥麦旋风,266,5,9,40,116;草莓麦旋风,295,6,9,47,122;香芋派,232,2,12,28,159;菠萝派,221,2,11,27,147;大脆鸡扒麦满分,361,16,17,35,804;原味板烧鸡腿麦满分,246,15,9,25,611;双层原味板烧鸡腿麦满分,355,23,17,27,984;吉士汉堡包,294,16,12,30,673;双层吉士汉堡,429,27,22,31,1017;麦香鸡,369,15,17,39,731;麦香鱼,325,16,13,35,556;麦辣鸡腿汉堡,485,24,24,42,1208;板烧鸡腿堡,391,23,17,35,1041;巨无霸,513,27,26,42,961;培根蔬萃双层牛堡,442,24,23,34,728;可乐中杯,147,0,0,36,0;可乐大杯,224,0,0,55,0;可乐小杯,107,0,0,26,0;雪碧中杯,105,0,0,26,29;雪碧大杯,160,0,0,39,45;雪碧小杯,76,0,0,19,21;无糖可口可乐中杯,0,0,0,1,35;无糖可口可乐大杯,0,0,0,1,53;无糖可口可乐小杯,0,0,0,0,25;大杯鲜萃咖啡,13,1,0,0,3;小杯鲜萃咖啡,15,1,0,3,2;锡兰红茶,2,0,0,0,0;热朱古力,125,2,2,22,107;纯牛奶（盒装）,129,7,7,10,73;麦旋酷阳光橙,228,1,2,50,77;浓缩咖啡,13,1,0,2,0;那么大鸡排,385,24,21,24,996;阳光柠檬红茶中杯,117,0,0,29,17;阳光柠檬红茶大杯,178,0,0,43,25;阳光柠檬红茶小杯,85,0,0,21,12;脆薯饼,146,1,9,14,311;脆香油条,202,5,12,19,230;100%苹果汁,88,0,0,21,0;汉堡包,248,13,8,29,492;麦乐鸡4块,170,10,10,11,337;纯悦,0,0,0,0,0;苹果片,32,0,0,7,0;不素之霸双层牛堡,493,28,27,34,1012;双层深海鳕鱼堡,485,28,21,46,917;儿童鱼排堡,269,15,6,36,442;培根安格斯厚牛堡,707,34,44,43,1037;芝士安格斯厚牛堡,696,32,44,43,897;yeyeyeye奶冻款,223,1,4,43,37;皮蛋鸡肉粥,133,6,3,20,611;雪菜脆笋鸡肉粥,120,4,2,22,552;猪柳炒双蛋堡,437,25,24,29,705;yeyeyeye爆珠款,212,1,3,42,122;柠檬拉明顿,121,2,7,12,35;芝士双层安格斯厚牛堡,1003,58,65,46,1373;培根双层安格斯厚牛堡,987,55,64,46,1191;火腿扒早安营养卷,444,16,24,39,1065;麦麦脆汁鸡-琵琶腿,328,21,20,16,905;德式图林根香肠,87,5,6,2,293;图林根香肠早安营养卷,425,14,23,38,977;麦麦脆汁鸡-带骨里脊,332,22,18,16,812;美汁源黄金橙橙,165,0,0,41,53;优品豆浆大杯,202,8,4,33,43;优品豆浆小杯,151,6,3,25,32;浓浓黑巧雪冰中杯,359,8,12,51,224;浓浓黑巧雪冰大杯,444,11,14,65,258;特浓奶香雪冰中杯,269,6,11,36,180;特浓奶香雪冰大杯,309,7,12,42,192;浓浓抹茶雪冰中杯,289,7,11,39,181;浓浓抹茶雪冰大杯,339,8,12,48,194;热牛奶中杯,176,10,8,15,101;热牛奶大杯,240,13,11,21,137;热牛奶小杯,147,8,7,13,84;冰牛奶中杯,224,13,11,19,128;冰牛奶大杯,269,15,13,23,154;冰牛奶小杯,147,8,7,13,84;冰奶铁中杯,148,8,7,13,77;冰奶铁大杯,162,9,7,15,85;冰奶铁小杯,86,5,4,8,44;热奶铁中杯,186,11,8,17,99;热奶铁大杯,249,14,11,22,134;热奶铁小杯,134,8,6,12,72;冰燕麦奶铁中杯,132,3,5,17,87;冰燕麦奶铁大杯,145,4,5,19,96;冰燕麦奶铁小杯,77,2,3,10,50;热燕麦奶铁中杯,167,4,6,22,112;热燕麦奶铁大杯,222,5,8,29,152;热燕麦奶铁小杯,120,3,5,16,81;冰美式中杯,13,1,0,2,0;冰美式大杯,14,1,0,2,0;冰美式小杯,10,1,0,1,0;热美式中杯,13,1,0,2,0;热美式大杯,14,1,0,2,0;热美式小杯,10,1,0,1,0;冰焦糖玛奇朵,148,8,7,13,77;热焦糖玛奇朵,167,9,7,15,88;卡布奇诺中杯,167,9,7,15,88;卡布奇诺大杯,223,13,10,20,120;冰浓浓燕麦黑巧中杯,120,2,5,16,87;冰浓浓燕麦黑巧大杯,131,3,5,17,95;冰燕麦奶中杯,199,4,8,26,145;冰燕麦奶大杯,239,5,9,32,174;冰燕麦奶小杯,131,3,5,17,95;热燕麦奶中杯,157,3,6,21,114;热燕麦奶大杯,213,4,8,28,156;热燕麦奶小杯,131,3,5,17,95;冰浓浓抹茶牛奶中杯,196,8,6,25,80;冰浓浓抹茶牛奶大杯,240,9,7,33,89;热浓浓抹茶牛奶中杯,238,11,8,29,104;热浓浓抹茶牛奶大杯,333,14,12,41,142;冰浓浓黑巧中杯,135,8,6,12,77;冰浓浓黑巧大杯,147,8,7,13,84;热浓浓黑巧中杯,176,10,8,15,101;热浓浓黑巧大杯,240,13,11,21,137;川宁伯爵红茶,2,0,0,0,0;抹茶阿芙佳朵,147,3,4,23,50;咖啡阿芙佳朵,139,4,4,21,49;热浓浓燕麦黑巧中杯,157,3,6,21,114;热浓浓燕麦黑巧大杯,213,4,8,28,156;草莓拉明顿,121,2,8,11,34;原味板烧鸡腿炒双蛋堡,419,27,21,30,715;双层猪柳蛋麦满分,513,29,32,26,1210;双层火腿扒麦满分,385,21,22,26,979;脆脆薯条,279,4,14,32,540;麦麦趣鸡球,266,17,13,19,789;酥酥多笋卷,342,14,15,36,1044;薄皮焦香V翅,192,17,11,6,594;蜜汁BBQ风味薄皮脆汁鸡-带骨里脊,152,20,5,6,635;蜜汁BBQ风味薄皮脆汁鸡-琵琶腿,173,18,9,5,547;果然多肉,478,36,17,44,1343;苹板支撑Pro,476,25,18,50,1077;专薯鱼你,463,18,17,57,652;绝代双翅,469,32,27,23,1167;牛气满满,495,26,24,42,764;蜜汁快乐,258,22,9,20,721;迷你朱古力新地,140,3,4,22,63;迷你草莓新地,122,2,3,21,42;鲜蔬蛋沙拉叠叠卷,266,11,14,24,518;鸡肉蛋沙拉叠叠卷,387,17,21,31,842;中杯怡泉+C,110,0,0,27,0;大杯怡泉+C,168,0,0,41,0;蒜了吧黄油风味薄皮脆汁鸡-琵琶腿,164,19,6,6,867;蒜了吧黄油风味薄皮脆汁鸡-带骨里脊,126,19,2,4,750;柠萌风味薄皮焦香V翅,204,18,11,6,768",
+ "combos": [
+  {
+   "code": "9900016073",
+   "name": "龙焰鸡腿堡三件套",
+   "price": 26.9,
+   "sauce": [{"name": "辣椒黄油风味酱", "sel": "0-1", "unsel": "0-0"}, {"name": "切块生菜", "sel": "0-1", "unsel": "0-0"}],
+   "rounds": [
+    {"n": "主品", "ch": [["龙焰鸡腿堡", 0, 1]]},
+    {"n": "小食", "ch": [["中薯条", 0, 1], ["5块心形薯饼+韩式辣椒黄油风味酱", 1, 0], ["月下相思扭扭薯", 1.5, 0], ["马来咖喱风味薄皮肉骨鸡3块", 2.5, 0], ["大薯条", 1.5, 0], ["小杯玉米杯", -1.5, 0], ["大杯玉米杯", 1.5, 0]]},
+    {"n": "饮料", "ch": [["可乐中杯", 0, 1], ["无糖可口可乐中杯", 0, 0], ["雪碧中杯", 0, 0], ["阳光柠檬红茶中杯", 0, 0], ["纯牛奶", 0.5, 0], ["美汁源多汁柠柠", 1, 0], ["大杯鲜萃咖啡", 2, 0], ["可乐大杯", 2, 0], ["无糖可口可乐大杯", 2, 0], ["雪碧大杯", 2, 0], ["阳光柠檬红茶大杯", 2, 0], ["茉莉奶绿雪冰", 3, 0], ["美汁源黄金橙橙", 3, 0], ["锡兰红茶", 1.5, 0], ["100%苹果汁", 1.5, 0], ["中杯怡泉+C", 1.5, 0], ["大杯怡泉+C", 3.5, 0], ["冰浓浓黑巧中杯", 11, 0]]}
+   ]
+  },
+  {
+   "code": "9900005462",
+   "name": "板烧鸡腿堡三件套",
+   "price": 35.0,
+   "sauce": [{"name": "烤味酱", "sel": "0-1", "unsel": "0-0"}, {"name": "切块生菜", "sel": "0-1", "unsel": "0-0"}],
+   "rounds": [
+    {"n": "主品", "ch": [["板烧鸡腿堡", 0, 1]]},
+    {"n": "小食", "ch": [["中薯条", 0, 1], ["5块心形薯饼+韩式辣椒黄油风味酱", 1, 0], ["月下相思扭扭薯", 1.5, 0], ["马来咖喱风味薄皮肉骨鸡3块", 2.5, 0], ["大薯条", 1.5, 0], ["小杯玉米杯", -1.5, 0], ["大杯玉米杯", 1.5, 0]]},
+    {"n": "饮料", "ch": [["可乐中杯", 0, 1], ["无糖可口可乐中杯", 0, 0], ["雪碧中杯", 0, 0], ["阳光柠檬红茶中杯", 0, 0], ["纯牛奶", 0.5, 0], ["美汁源多汁柠柠", 1, 0], ["大杯鲜萃咖啡", 2, 0], ["可乐大杯", 2, 0], ["无糖可口可乐大杯", 2, 0], ["雪碧大杯", 2, 0], ["阳光柠檬红茶大杯", 2, 0], ["茉莉奶绿雪冰", 3, 0], ["美汁源黄金橙橙", 3, 0], ["锡兰红茶", 1.5, 0], ["100%苹果汁", 1.5, 0], ["中杯怡泉+C", 1.5, 0], ["大杯怡泉+C", 3.5, 0], ["冰浓浓黑巧中杯", 11, 0]]}
+   ]
+  }
+ ]
+}</script>
+<script>
+const SNAP = JSON.parse(document.getElementById('snap-data').textContent);
+
+/* ---------- 数据层 ---------- */
+// 营养索引：菜单名 → [营养表名, 是否官方精确匹配]
+const ALIAS = {
+  "薯条":["中薯条",1],"可乐":["可乐中杯",1],"雪碧":["雪碧中杯",1],
+  "阳光柠檬红茶":["阳光柠檬红茶中杯",1],"怡泉+C":["中杯怡泉+C",1],
+  "100%苹果汁（盒装）":["100%苹果汁",1],"美汁源黄金橙橙":["美汁源黄金橙橙",1],
+  "浓浓黑巧（冰/热）":["冰浓浓黑巧中杯",1],"浓浓燕麦黑巧（冰/热）":["冰浓浓燕麦黑巧中杯",1],
+  "麦咖啡美式":["冰美式中杯",1],"麦咖啡奶铁":["冰奶铁中杯",1],"燕麦奶铁":["冰燕麦奶铁中杯",1],
+  "卡布奇诺":["卡布奇诺中杯",1],"鲜萃咖啡":["大杯鲜萃咖啡",1],"阳光橙麦炫酷":["麦旋酷阳光橙",1],
+  "经典麦旋风":["奥利奥麦旋风",1],"圆筒冰淇淋":["圆筒冰淇淋",1],"脆薯饼":["脆薯饼",1],
+  "苹果片":["苹果片",1],"那么大鸡排（椒盐风味）":["那么大鸡排",1],"薄皮焦香V翅":["薄皮焦香V翅",1],
+  "锡兰红茶":["锡兰红茶",1],"纯悦":["纯悦",1],"浓缩咖啡":["浓缩咖啡",1],
+  "咖啡阿芙佳朵":["咖啡阿芙佳朵",1],"美汁源多汁柠柠":["美汁源多汁柠柠",0],
+  "板烧鸡腿堡":["板烧鸡腿堡",1],"龙焰鸡腿堡":["麦辣鸡腿汉堡",0],"龙焰芝士棒鸡腿堡":["麦辣鸡腿汉堡",0],
+  "三文鱼双虾至尊月堡":["双层深海鳕鱼堡",0],
+  "派":["香芋派",0],"新地":["草莓新地",0],"麦乐鸡":["麦乐鸡4块",0],"麦辣鸡翅":["麦辣鸡翅-2块",0],
+  "玉米杯":["小杯玉米杯",0],"蓝莓爆爆珠麦旋风":["奥利奥麦旋风",0],"泷愿成真麦旋风（大米风味）":["奥利奥麦旋风",0],
+  "柠檬脆脆麦旋风":["奥利奥麦旋风",0],"灰焰圆筒":["圆筒冰淇淋",0],"茉莉奶绿雪冰":["浓浓黑巧雪冰中杯",0],
+  "燕麦奶":["冰燕麦奶中杯",0],"牛奶":["热牛奶中杯",0],"心形薯饼8块":["脆薯饼",0],"心形薯饼5块":["脆薯饼",0],
+  "月下相思扭扭薯":["脆脆薯条",0],"马苏里拉拉丝芝士条":["麦乐鸡4块",0],
+  "蘸酱麦麦脆汁鸡":["麦麦脆汁鸡-琵琶腿",0],"蘸酱韩式甜辣酱鸡块":["麦麦脆汁鸡-琵琶腿",0],
+  "韩式甜辣酱鸡块8块":["麦麦脆汁鸡-琵琶腿",0],"蘸酱炸鸡":["麦麦脆汁鸡-琵琶腿",0],
+  "麦麦脆汁鸡1块":["麦麦脆汁鸡-琵琶腿",0],"鸡薯双全盒":["麦辣鸡翅-2块",0],
+  "小杯玉米杯":["小杯玉米杯",1],"大杯玉米杯":["大杯玉米杯",1],"中薯条":["中薯条",1],"大薯条":["大薯条",1],
+  "可乐中杯":["可乐中杯",1],"无糖可口可乐中杯":["无糖可口可乐中杯",1],"无糖可口可乐大杯":["无糖可口可乐大杯",1],
+  "可乐大杯":["可乐大杯",1],"雪碧中杯":["雪碧中杯",1],"雪碧大杯":["雪碧大杯",1],
+  "阳光柠檬红茶中杯":["阳光柠檬红茶中杯",1],"阳光柠檬红茶大杯":["阳光柠檬红茶大杯",1],
+  "纯牛奶":["纯牛奶（盒装）",1],"100%苹果汁":["100%苹果汁",1],"中杯怡泉+C":["中杯怡泉+C",1],"大杯怡泉+C":["大杯怡泉+C",1],
+  "大杯鲜萃咖啡":["大杯鲜萃咖啡",1],"冰浓浓黑巧中杯":["冰浓浓黑巧中杯",1],
+  "马来咖喱风味薄皮肉骨鸡3块":["蜜汁BBQ风味薄皮脆汁鸡-琵琶腿",0],
+  "5块心形薯饼+韩式辣椒黄油风味酱":["脆薯饼",0],
+  "堡你欢乐套餐（500大卡）":["绝代双翅",0],"苹水相鱼套餐（500大卡）":["专薯鱼你",0],
+  "酥脆无双套餐（500大卡）":["绝代双翅",0],"辣么快乐套餐（500大卡）":["绝代双翅",0],
+  "牛气满满套餐（500大卡）":["牛气满满",1],"苹板支撑Pro套餐（500大卡）":["苹板支撑Pro",1]
+};
+// 无同类参照时的兜底估算（均标「估算」）
+const EST_RULES = [
+  [/随心配|随心选|件套|套餐/, 750], // 主品+小食+饮料的组合，按正餐量级估
+  [/汉堡|堡/, 450], [/麦旋风/, 290], [/雪冰/, 320], [/鸡块|脆汁鸡|炸鸡/, 320],
+  [/薯饼/, 150], [/餐/, 800], [/奶|咖啡/, 150], [/./, 100]
+];
+const NUT = {};
+SNAP.nutri.split(";").forEach(r => {
+  const p = r.split(",");
+  if (p.length >= 6) NUT[p[0]] = {kcal:+p[1], protein:+p[2], fat:+p[3], carb:+p[4], sodium:+p[5]};
+});
+function lookupKcal(name){
+  if (NUT[name]) return {kcal:NUT[name].kcal, protein:NUT[name].protein, official:true};
+  if (ALIAS[name]){
+    const [nn, ok] = ALIAS[name];
+    if (NUT[nn]) return {kcal:NUT[nn].kcal, protein:NUT[nn].protein, official:!!ok, basis:NUT[nn] ? nn : ""};
+  }
+  for (const [re, v] of EST_RULES) if (re.test(name)) return {kcal:v, protein:0, official:false, basis:"同类品均值"};
+  return {kcal:100, protein:0, official:false, basis:"同类品均值"};
+}
+function kcalColor(k){ return k<=400 ? "var(--green)" : k<=600 ? "var(--orange)" : "var(--red)"; }
+function kcalLabel(lk){ return (lk.official ? "" : "≈") + lk.kcal; }
+
+/* ---------- 意图联想引擎 ---------- */
+const RULES = [
+  {re:/减脂|瘦|控卡|轻一点|低卡|别胖|轻食/, goal:"减脂", conf:30},
+  {re:/增肌|练完|健身|撸铁|举铁|蛋白|补一补/, goal:"增肌", conf:30},
+  {re:/饿|馋|爽|罪恶|放开|大吃|吃饱/, goal:"解馋", conf:25},
+  {re:/清淡|清爽|少油|不太油|健康/, goal:"清淡", conf:25},
+  {re:/新品|上新|新出|尝新|没吃过|限定|联名/, goal:"尝新", conf:30},
+  {re:/便宜|省钱|划算|优惠|穷|学生/, goal:"省钱", conf:30},
+  {re:/累|加班|熬夜|忙|困|烦/, goal:"解馋", conf:18, why:"需要点实在又解乏的"},
+  {re:/开心|庆祝|发工资|周五|周末/, goal:"尝新", conf:15, why:"开心就要吃点新鲜的"},
+  {re:/热|晒|出汗|夏天/, goal:"清爽", conf:15, why:"天热优先冰饮清爽的"},
+  {re:/冷|冻|冬天|降温/, goal:"热乎", conf:15, why:"天冷优先热乎的"},
+  {re:/烤肉|烤的|别炸/, goal:"烤制", conf:20},
+  {re:/辣/, pref:"辣", conf:10}
+];
+
+/* ---------- 语音/输入归一化：去口水词 + 语境纠错 ---------- */
+// 常见口语填充词（口水词），去掉不影响意图判断
+const FILLER_WORDS = ["就是说","就是说呢","怎么说呢","就是","那个啥","那什么","那个","这个","然后","其实","反正","你懂的"];
+const FILLER_CHARS = /[嗯呃啊哦哎哟唉呀嘿哈哟]/g; // 单字语气/口水字
+// 麦当劳语境下的同音/口误纠正（说错了也能匹配到对的品名）
+const PHONE_FIX = [
+  [/饱/g,"堡"], [/爸/g,"霸"], [/卖辣/g,"麦辣"], [/卖香鸡/g,"麦香鸡"], [/卖当劳/g,"麦当劳"],
+  [/扣/g,"口"], [/冰淇淋/g,"圆筒冰淇淋"], [/麻辣鸡腿/g,"麦辣鸡腿"], [/鸡腿宝/g,"鸡腿堡"]
+];
+function cleanSpeech(raw){
+  if (!raw) return "";
+  let t = String(raw).replace(/[，。！？、,.!?]/g, " ");
+  for (const w of FILLER_WORDS) t = t.split(w).join("");
+  t = t.replace(FILLER_CHARS, "");                 // 去「嗯啊哦」等单字口水
+  for (const [re, to] of PHONE_FIX) t = t.replace(re, to); // 同音纠错
+  t = t.replace(/[吧呗嘛呢啦哈呀]+/g, "");         // 句尾语气词
+  t = t.replace(/\s+/g, " ").trim();
+  return t;
+}
+
+function parseIntent(text, picked){
+  const r = {goal:null, budget:picked.budget, kcalCap:picked.kcalCap, taste:picked.taste, why:[], conf:40, _text:text};
+  const m = text.match(/(\d{2,4})\s*(块|元|块钱)/);
+  if (m && !r.budget) r.budget = +m[1];
+  for (const rule of RULES) if (rule.re.test(text)){ if(!r.goal){r.goal=rule.goal;} r.conf += rule.conf; if(rule.why) r.why.push(rule.why); }
+  if (picked.goal) { r.goal = picked.goal; r.conf += 25; }
+  if (r.budget) r.conf += 5;
+  if (r.kcalCap) r.conf += 5;
+  r.conf = Math.min(r.conf, 96);
+  return r;
+}
+
+/* ---------- 推荐 ---------- */
+const COMBO_MAIN = {}; // 主品名 → 套餐 code（用于单点→套餐升级提示）
+const FOOD_CATS = ["人气热卖","精选单人餐","鸡肉汉堡/卷","随心配1+1","巨无霸/牛鱼肉堡","安格斯MAX厚牛堡","炸鸡","大堡口福单人餐","500大卡套餐","小食甜品/其他","饮品","麦咖啡"];
+/* 正餐结构约束：推荐位只放「能当一顿饭」的品类。
+   饮品/小食/甜品永远不单独进推荐（没人会点一杯纯悦当饭），
+   除非用户明确说要喝点什么/来点甜的；它们正常出现在套餐选配里。 */
+const DRINK_CATS = ["饮品","麦咖啡"];
+const SNACK_CATS = ["小食甜品/其他"];
+const SNACK_WANT_RE = /甜|雪糕|冰|饮|喝|咖啡|奶茶|小食|薯条|零嘴|派|旋风|可乐/;
+const MEAL_NAME_RE = /堡|霸|套餐|随心配|件套|卷|鸡|翅|鱼|饭|餐/; // 名字得「像一顿正经饭」（注意：巨无霸的「霸」不是「堡」）
+function allFoods(intent){
+  const seen = new Set(); const out = [];
+  const wantSnack = !!(intent && intent._text && SNACK_WANT_RE.test(intent._text));
+  for (const c of SNAP.cats) if (FOOD_CATS.includes(c.n)){
+    if (!wantSnack && (DRINK_CATS.includes(c.n) || SNACK_CATS.includes(c.n))) continue;
+    for (const code of c.c) if (!seen.has(code) && SNAP.items[code]){
+      if (!wantSnack && !MEAL_NAME_RE.test(SNAP.items[code][0])) continue; // 薯饼/派等零碎不进推荐位
+      seen.add(code); out.push({code, cat:c.n});
+    }
+  }
+  return out;
+}
+function scoreFood(f, intent){
+  const it = SNAP.items[f.code]; const lk = lookupKcal(it[0]); const price = it[1];
+  let s = 0;
+  const isBurgerOrSet = /堡|套餐|随心配|餐/.test(it[0]);
+  switch(intent.goal){
+    case "减脂": s = Math.max(0, 1000 - lk.kcal); if (f.cat==="500大卡套餐") s += 300; if(intent.kcalCap && lk.kcal>intent.kcalCap) s -= 9999; break;
+    case "增肌": s = (lk.protein||10) * 20 - lk.kcal*0.1; break;
+    case "解馋": s = lk.kcal + (isBurgerOrSet?200:0); break;
+    case "清淡": s = Math.max(0, 800 - lk.kcal) + (/板烧|烤/.test(it[0])?200:0) - (/炸|辣|脆|麦乐鸡|鸡排|鸡块/.test(it[0])?150:0); break;
+    case "尝新": s = (SNAP.tags[f.code]||[]).includes("上新") ? 1000 : Math.random()*100; break;
+    case "省钱": s = 1000 - price*20; if (/随心配/.test(it[0])) s += 300; break;
+    default: s = Math.random()*400 + (f.cat==="人气热卖"?300:0);
+  }
+  // 用户明确点了某类零食/饮料（"想喝可乐""来点甜的"）→ 名字匹配的优先到顶（必须在 switch 之后加，否则被覆盖）
+  if (intent._text && SNACK_WANT_RE.test(intent._text) && SNACK_WANT_RE.test(it[0])) s += 5000;
+  // 文本里直接说出了完整品名（"我想喝可乐"里的"可乐"）→ 压过一切，排第一
+  if (intent._text && it[0].length >= 2 && intent._text.includes(it[0])) s += 20000;
+  if (intent.budget && price > intent.budget) s -= 5000;
+  if (intent.kcalCap && lk.kcal > intent.kcalCap) s -= 9999;
+  if (intent.taste==="清淡"){ s += Math.max(0, 500-lk.kcal); if(/炸|辣|麦乐鸡|鸡排|鸡块/.test(it[0])) s -= 400; }
+  if (intent.taste==="放开吃") s += lk.kcal*0.5;
+  if (intent.goal==="烤制") s += /板烧|烤/.test(it[0]) ? 800 : -300;
+  if (intent.goal==="热乎") s += /热|堡|餐/.test(it[0]) ? 300 : 0;
+  if (intent.goal==="清爽") s += /冰|柠|雪碧|炫/.test(it[0]) ? 300 : 0;
+  return s;
+}
+let curIntent = null, curPool = [];
+function pickTop(intent, exclude){
+  const wantSnack = !!(intent._text && SNACK_WANT_RE.test(intent._text));
+  curPool = allFoods(intent).map(f => ({...f, s: scoreFood(f, intent)}))
+    // 双保险：非「明确要零食饮料」时，过滤掉低热量零碎（如 0 卡纯悦、53 卡玉米杯），保证推荐位永远是一顿正经饭
+    .filter(f => f.s > -1000 && (wantSnack || lookupKcal(SNAP.items[f.code][0]).kcal >= 100))
+    .sort((a,b)=>b.s-a.s);
+  const out = [];
+  for (const f of curPool){
+    if (exclude && exclude.includes(f.code)) continue;
+    if (out.length>=3) break;
+    out.push(f);
+  }
+  return out;
+}
+
+/* ---------- 界面 ---------- */
+const $ = id => document.getElementById(id);
+function show(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on')); $(id).classList.add('on'); window.scrollTo(0,0); }
+
+const picked = {taste:"随便", goal:"", budget:"", kcalCap:null};
+document.querySelectorAll('.chip').forEach(ch => ch.onclick = () => {
+  const k = ch.dataset.k;
+  document.querySelectorAll(`.chip[data-k="${k}"]`).forEach(c=>c.classList.remove('sel'));
+  ch.classList.add('sel');
+  picked[k] = ch.dataset.v || null;
+});
+$('kcalCap').oninput = e => picked.kcalCap = +e.target.value || null;
+
+// 语音输入
+if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const rec = new SR(); rec.lang = 'zh-CN';
+  $('voiceBtn').onclick = () => { rec.start(); $('voiceBtn').textContent = '…'; };
+  rec.onresult = e => { $('txt').value = cleanSpeech(e.results[0][0].transcript); $('voiceBtn').textContent='🎙'; };
+  rec.onend = () => $('voiceBtn').textContent='🎙';
+  rec.onerror = () => $('voiceBtn').textContent='🎙';
+} else { $('voiceBtn').style.display='none'; }
+
+let lastPicks = [];
+function clearAll(){
+  picked.taste = "随便"; picked.goal = ""; picked.budget = ""; picked.kcalCap = null;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('sel'));
+  $('txt').value = ""; $('kcalCap').value = "";
+}
+function goRecommend(){
+  curIntent = parseIntent(cleanSpeech($('txt').value), picked);
+  renderPicks(pickTop(curIntent, []));
+  show('s2');
+}
+function reroll(){
+  renderPicks(pickTop(curIntent, lastPicks.map(p=>p.code)));
+}
+function renderPicks(list){
+  lastPicks = list;
+  const whyTxt = curIntent.why.length ? "，" + curIntent.why.join("；") : "";
+  const goalTxt = curIntent.goal ? `判断你想要「${curIntent.goal}」` : "你给的信息比较随，我按人气与均衡来推";
+  $('confText').innerHTML = `联想结果：${goalTxt}${whyTxt} · <b>匹配置信度 ${curIntent.conf}%</b><br><span class="note">猜得不对？点「换一批」或回去直说。</span>`;
+  $('confBar').style.width = curIntent.conf + "%";
+  $('foodList').innerHTML = list.map(f => {
+    const it = SNAP.items[f.code]; const lk = lookupKcal(it[0]);
+    const tags = (SNAP.tags[f.code]||[]).slice(0,2).join(" · ");
+    return `<div class="food" onclick="goCustom('${f.code}')">
+      <div class="kcal-badge num" style="background:${kcalColor(lk.kcal)}">${kcalLabel(lk)}<small>kcal</small></div>
+      <div class="info"><div class="n">${it[0]}</div>
+        <div class="p num">¥${it[1].toFixed(1)}${it[3] ? ` <span style="font-size:11px;color:#999">⚠️${it[3]}</span>` : ""}</div>
+        <div class="t">${f.cat}${tags ? " · " + tags : ""}</div></div>
+      <div class="arrow">›</div></div>`;
+  }).join("");
+}
+
+/* ---------- 自定义 ---------- */
+let cz = null;
+function goCustom(code){
+  const combo = SNAP.combos.find(c => c.code === code);
+  const it = SNAP.items[code];
+  cz = { code, name: it[0], price: it[1], combo: combo || null, sel: {}, noSauce: false };
+  if (combo) combo.rounds.forEach((r,i) => cz.sel[i] = r.ch.findIndex(c=>c[2]===1));
+  $('czName').textContent = it[0];
+  const lk = lookupKcal(it[0]);
+  $('czBase').innerHTML = lk.official ? "热量为官方营养数据" : `⚠️ 暂无官方营养数据，按「${lk.basis||'同类品'}」估算`;
+  renderCustom();
+  show('s3');
+}
+function choiceKcal(name){ return lookupKcal(name); }
+function renderCustom(){
+  if (!cz) return;
+  // 换配区
+  if (cz.combo){
+    $('czRounds').innerHTML = cz.combo.rounds.map((r,i)=>{
+      if (r.n === "主品") return "";
+      return `<div class="round"><div class="rn">${r.n}（点选替换）</div>` + r.ch.map((c,j)=>{
+        const cur = cz.combo.rounds[i].ch[cz.sel[i]];
+        const lk = choiceKcal(c[0]);
+        const dClass = c[1]<0?"good":c[1]>0?"bad":"flat";
+        const dTxt = c[1]===0 ? "±¥0" : (c[1]>0?"+":"−")+"¥"+Math.abs(c[1]).toFixed(1);
+        return `<div class="opt ${cz.sel[i]===j?'sel':''}" onclick="cz.sel[${i}]=${j};renderCustom()">
+          <span>${c[0]} <span class="est">${lk.official?'':'≈'}${lk.kcal} kcal</span></span>
+          <span class="d ${dClass} num">${dTxt}</span></div>`;
+      }).join("") + `</div>`;
+    }).join("");
+    // 去酱
+    if (cz.combo.sauce && cz.combo.sauce.length){
+      $('czSauce').innerHTML = `<div class="rn" style="font-size:13px;font-weight:700;margin-bottom:8px">特调（接口支持，下单时同步）</div>
+        <label class="opt" style="display:flex;gap:8px;align-items:center">
+          <input type="checkbox" ${cz.noSauce?'checked':''} onchange="cz.noSauce=this.checked;renderCustom()"> 去掉 ${cz.combo.sauce[0].name}
+          <span class="est">约 -80~-130 kcal（估算）</span></label>`;
+    } else { $('czSauce').innerHTML = ""; }
+  } else {
+    $('czRounds').innerHTML = '<p class="note">单品无需换配。</p>';
+    $('czSauce').innerHTML = "";
+  }
+  // 单点→套餐升级提示（用真实菜单价对比）
+  $('czBundle').innerHTML = "";
+  if (!cz.combo){
+    const combos = SNAP.combos.filter(c => c.rounds[0].ch[0][0] === cz.name);
+    if (combos.length){
+      const c0 = combos[0];
+      const side = 14.5, drink = 9.5; // 中薯条 ¥14.5 + 可乐 ¥9.5（快照真实单价）
+      const singleSum = cz.price + side + drink;
+      const save = singleSum - c0.price;
+      if (save > 0) $('czBundle').innerHTML = `<p style="font-size:13px">💡 同款 <b>${c0.name}</b>（含小食+饮料）¥${c0.price}，比你单点这三样 ¥${singleSum.toFixed(1)} <b style="color:var(--red)">省 ¥${save.toFixed(1)}</b>（快照价） <span class="btn ghost" style="display:inline-block;width:auto;padding:6px 14px;font-size:12px;margin:0" onclick="goCustom('${c0.code}')">换成套餐 →</span></p>`;
+    }
+  }
+  // 合计
+  let kcal = 0, price = cz.combo ? cz.combo.price : cz.price, hasEst = false;
+  if (cz.combo){
+    cz.combo.rounds.forEach((r,i)=>{
+      const lk = choiceKcal(r.ch[cz.sel[i]][0]); kcal += lk.kcal; if(!lk.official) hasEst = true;
+      price += r.ch[cz.sel[i]][1];
+    });
+    if (cz.noSauce) kcal -= 100; // 去酱估算中值
+  } else {
+    const lk = lookupKcal(cz.name); kcal = lk.kcal; if(!lk.official) hasEst = true;
+  }
+  cz.finalKcal = kcal; cz.finalPrice = Math.round(price*10)/10; cz.hasEst = hasEst;
+  $('czKcal').innerHTML = (hasEst?"≈":"") + kcal + " kcal";
+  $('czKcal').style.color = kcalColor(kcal);
+  $('czPrice').textContent = "¥" + cz.finalPrice.toFixed(1) + "（快照价）";
+  $('czEstNote').textContent = hasEst ? "含「≈」项为估算值，依据见各卡片说明；最终热量与价格以官方渠道为准。" : "";
+}
+function goFinal(){
+  const lines = [`${cz.name} ×1`];
+  if (cz.combo){
+    cz.combo.rounds.forEach((r,i)=>{ if(r.n!=="主品") lines.push(`  · ${r.n}：${r.ch[cz.sel[i]][0]}`); });
+    if (cz.noSauce && cz.combo.sauce.length) lines.push(`  · 特调：去 ${cz.combo.sauce[0].name}`);
+  }
+  lines.push(`整单约 ${cz.hasEst?"≈":""}${cz.finalKcal} kcal · 预计 ¥${cz.finalPrice.toFixed(1)}`);
+  lines.push(`数据参考：${SNAP.meta.storeName}（接入 MCP 后为你的附近门店）`);
+  $('receipt').innerHTML = `<h3>— 麦麦联想 · 点餐清单 —</h3><div class="sep"></div>${lines.map(l=>`<div>${l}</div>`).join("")}<div class="sep"></div><div class="note">生成于 ${SNAP.meta.generatedAt} · 快照数据，以官方 App 为准</div>`;
+  show('s4');
+}
+function copyList(){
+  const t = $('receipt').innerText.replace(/— 麦麦联想 · 点餐清单 —\n/,"").replace(/生成于.*$/s,"").trim();
+  navigator.clipboard.writeText(t).then(()=>alert("已复制，去官方 App 下单吧 🍔")).catch(()=>{
+    const ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); alert("已复制");
+  });
+}
+
+/* ---------- 初始化 ---------- */
+$('storeLine').textContent = `${SNAP.meta.storeName} · ${SNAP.meta.dayOfWeek} · 示例快照，接入 MCP 后显示你附近的店`;
+$('snapTime').textContent = SNAP.meta.generatedAt;
+</script>
+</body>
+</html>
