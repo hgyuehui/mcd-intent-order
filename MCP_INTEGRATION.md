@@ -29,12 +29,13 @@
 |---|---|
 | `campaign-calendar` | 活动日历，辅助"尝新"档推荐（仅展示原文方向，不承诺精确金额） |
 
-### 刻意不用的 Tool
+### 刻意不用的 Tool（网页版离线演示场景）
 
 | Tool | 原因 |
 |---|---|
-| `create-order` / `party-order-create` | 本产品定位"下单前决策"，终点是生成可复制的点餐清单，不替用户建单付款 |
 | `auto-bind-coupons` | 优惠券接口缺少结构化字段（无适用商品/门槛），为避免误导用户，不自动领券 |
+
+> `create-order` 在**网页版离线演示**中不使用（静态页无 Token、不建单）；在 **Skill 版**中，用户明确说"下单"时可用：先 `calculate-price` 核价，再 `create-order` 创建订单并返回官方 H5 支付链接，**付款仍由用户本人完成，绝不代扣款**。
 
 ## 关键实现点
 
@@ -52,5 +53,6 @@
 ```
 用户一句话/点选 → now-time-info → query-nearby-stores → query-meals
     → list-nutrition-foods（热量标注）→ query-meal-detail（换配/去酱）
-    → calculate-price（实时核价，可选）→ 点餐清单（用户自行去官方 App 付款）
+    → calculate-price（实时核价）→ 点餐清单（复制去官方 App 下单）
+    →（可选，Skill 版）create-order 建单 → 官方 H5 支付链接（用户自行付款）
 ```
